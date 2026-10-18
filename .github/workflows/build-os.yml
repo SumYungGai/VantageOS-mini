@@ -18,12 +18,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use GitHub CLI to download the firmware from the correct ROCKNIXDS repository
-          gh release download --repo JorreFog/ROCKNIXDS --pattern "*img.gz" --dir .
+          echo "Bypassing strict naming conventions. Downloading the main release archive..."
           
-          # Extract the genuine operating system image
-          gunzip *.img.gz
-          mv *.img vantageos-mini-release.img
+          # Download ANY compressed asset in the latest release, whether it is a .gz or a .zip
+          gh release download --repo JorreFog/ROCKNIXDS --pattern "*.gz" --dir . || gh release download --repo JorreFog/ROCKNIXDS --pattern "*.zip" --dir .
+          
+          echo "Extracting payload..."
+          # Attempt to unzip or gunzip whatever file we just grabbed
+          unzip *.zip || gunzip *.gz || true
+          
+          # Automatically find the extracted OS file and standardize its name for Step 3
+          IMG_FILE=$(find . -maxdepth 1 -name "*.img" | head -n 1)
+          
+          if [ -z "$IMG_FILE" ]; then
+            echo "Critical Error: No .img file found after extraction."
+            exit 1
+          fi
+          
+          echo "Found OS Image: $IMG_FILE. Renaming for injection..."
+          mv "$IMG_FILE" vantageos-mini-release.img
 
       - name: 3. Inject Vantage Design Language
         run: |
