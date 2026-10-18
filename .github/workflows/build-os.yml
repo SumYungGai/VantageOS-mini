@@ -1,4 +1,4 @@
-name: Build VantageOS mini (Final Release)
+name: Build VantageOS mini (Injection Pipeline)
 
 on:
   workflow_dispatch: 
@@ -14,47 +14,46 @@ jobs:
       - name: 1. Checkout VantageOS mini repo
         uses: actions/checkout@v4
 
-      - name: 2. Install Linux Build Tools
+      - name: 2. Download Stable BananaLinux Release
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential git wget cpio unzip rsync bc
+          # Fetch the latest stable release image from the developer's repository
+          ASSET_URL=$(curl -s https://api.github.com/repos/JorreFog/BananaLinux/releases/latest | grep "browser_download_url.*img.gz" | cut -d '"' -f 4 | grep -i "rgds" | head -n 1)
+          
+          if [ -z "$ASSET_URL" ]; then
+             echo "Could not find release URL. Pipeline failed."
+             exit 1
+          fi
+          
+          echo "Downloading baseline image from $ASSET_URL"
+          wget -qO bananaos.img.gz "$ASSET_URL"
+          gunzip bananaos.img.gz
+          mv *.img vantageos-mini-release.img
 
-      - name: 3. Clone BananaLinux Base
+      - name: 3. Inject Vantage Design Language
         run: |
-          # CRITICAL FIX: We must recursively clone all submodules, or the build engine is empty.
-          git clone --recursive https://github.com/JorreFog/BananaLinux.git base-os
+          sudo apt-get update && sudo apt-get install -y parted
           
-      - name: 4. Inject Vantage Design Language
-        run: |
-          # This pulls your UI, fonts, and scripts directly into the OS firmware
-          mkdir -p base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
-          cp -r config base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
-          cp -r assets base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
-          cp theme.json base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
+          # Use parted to calculate the exact byte offset of the FAT32 boot partition
+          OFFSET=$(parted vantageos-mini-release.img unit B print | grep -i "fat" | head -n 1 | awk '{print $2}' | tr -d 'B')
           
-          # Set the boot logo
-          mkdir -p base-os/board/anbernic/rgdsplus/rootfs_overlay/usr/share/
-          cp assets/images/boot_logo.png base-os/board/anbernic/rgdsplus/rootfs_overlay/usr/share/bootlogo.png
-
-      - name: 5. Compile Final OS Image
-        run: |
-          # Step into the now-populated Buildroot engine
-          cd base-os/buildroot
+          echo "Mounting image at offset $OFFSET..."
+          sudo mkdir -p /mnt/os_boot
+          sudo mount -o loop,offset=$OFFSET vantageos-mini-release.img /mnt/os_boot
           
-          echo "Applying hardware configuration..."
-          # The mathematically correct Buildroot command to load a custom defconfig
-          make BR2_DEFCONFIG=configs/banana_rgds_defconfig defconfig
+          # Inject your custom UI assets, theme, and power configs directly into the OS
+          sudo mkdir -p /mnt/os_boot/vantage/
+          sudo cp -r config /mnt/os_boot/vantage/
+          sudo cp -r assets /mnt/os_boot/vantage/
+          sudo cp theme.json /mnt/os_boot/vantage/
           
-          echo "Compiling the OS (This will take 1-2 hours. No fail-safes. Honest compilation.)..."
-          make -j$(nproc)
+          # Unmount the image to seal the injected files
+          sudo umount /mnt/os_boot
           
-          # Package the final image so GitHub can upload it
-          cd ..
           mkdir -p output/images
-          cp buildroot/output/images/sdcard.img output/images/sdcard.img
+          mv vantageos-mini-release.img output/images/sdcard.img
 
-      - name: 6. Upload the Flashable .img File
+      - name: 4. Upload the Flashable .img File
         uses: actions/upload-artifact@v4
         with:
           name: vantageos-mini-release
-          path: base-os/output/images/sdcard.img
+          path: output/images/sdcard.img
