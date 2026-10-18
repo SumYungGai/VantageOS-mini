@@ -14,12 +14,12 @@ jobs:
       - name: 1. Checkout VantageOS mini repo
         uses: actions/checkout@v4
 
-      - name: 2. Download Stable BananaLinux Release
+      - name: 2. Download Stable BananaOS Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use GitHub CLI to bypass rate limits and directly download the firmware
-          gh release download --repo JorreFog/BananaLinux --pattern "*rgds*img.gz" --dir .
+          # Use GitHub CLI to download the firmware from the correct ROCKNIXDS repository
+          gh release download --repo JorreFog/ROCKNIXDS --pattern "*img.gz" --dir .
           
           # Extract the genuine operating system image
           gunzip *.img.gz
