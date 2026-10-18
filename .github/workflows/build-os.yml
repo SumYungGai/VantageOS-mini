@@ -32,13 +32,13 @@ jobs:
           cp theme.json base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
           
           # Set the boot logo
+          mkdir -p base-os/board/anbernic/rgdsplus/rootfs_overlay/usr/share/
           cp assets/images/boot_logo.png base-os/board/anbernic/rgdsplus/rootfs_overlay/usr/share/bootlogo.png
 
       - name: 5. Compile Final OS Image
         run: |
           cd base-os
           make rgdsplus_defconfig
-          # Using all available GitHub server cores to compile the Linux kernel
           make -j$(nproc)
 
       - name: 6. Upload the Flashable .img File
