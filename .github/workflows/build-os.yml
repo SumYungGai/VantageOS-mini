@@ -14,29 +14,26 @@ jobs:
       - name: 1. Checkout VantageOS mini repo
         uses: actions/checkout@v4
 
-      - name: 2. Download Stable BananaOS Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 2. Download Official Base Firmware
         run: |
-          echo "Bypassing strict naming conventions. Downloading the main release archive..."
+          echo "Bypassing empty repositories. Pulling the official ROCKNIX base..."
           
-          # Download ANY compressed asset in the latest release, whether it is a .gz or a .zip
-          gh release download --repo JorreFog/ROCKNIXDS --pattern "*.gz" --dir . || gh release download --repo JorreFog/ROCKNIXDS --pattern "*.zip" --dir .
+          # Ask the GitHub API for the direct download link to the latest genuine firmware
+          ASSET_URL=$(curl -s https://api.github.com/repos/ROCKNIX/ROCKNIX/releases/latest | grep "browser_download_url" | grep ".img.gz" | head -n 1 | cut -d '"' -f 4)
           
-          echo "Extracting payload..."
-          # Attempt to unzip or gunzip whatever file we just grabbed
-          unzip *.zip || gunzip *.gz || true
-          
-          # Automatically find the extracted OS file and standardize its name for Step 3
-          IMG_FILE=$(find . -maxdepth 1 -name "*.img" | head -n 1)
-          
-          if [ -z "$IMG_FILE" ]; then
-            echo "Critical Error: No .img file found after extraction."
-            exit 1
+          if [ -z "$ASSET_URL" ]; then
+             echo "Critical Error: Could not fetch ROCKNIX URL."
+             exit 1
           fi
           
-          echo "Found OS Image: $IMG_FILE. Renaming for injection..."
-          mv "$IMG_FILE" vantageos-mini-release.img
+          echo "Downloading actual firmware from: $ASSET_URL"
+          wget -qO base.img.gz "$ASSET_URL"
+          
+          echo "Extracting the multi-gigabyte payload..."
+          gunzip base.img.gz
+          
+          # Hand off the genuine file to Step 3 for the Vantage UI injection
+          mv base.img vantageos-mini-release.img
 
       - name: 3. Inject Vantage Design Language
         run: |
