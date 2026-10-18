@@ -1,6 +1,5 @@
-name: Build VantageOS mini (Phase 1)
+name: Build VantageOS mini (Final Release)
 
-# This tells GitHub to run the script when you click a button, or when you upload new code.
 on:
   workflow_dispatch: 
   push:
@@ -22,22 +21,28 @@ jobs:
 
       - name: 3. Clone BananaLinux Base
         run: |
-          # Grabbing the core OS code we are building on top of
           git clone --depth=1 https://github.com/JorreFog/BananaLinux.git base-os
           
-      - name: 4. Compile OS Image (Phase 1 Fast-Pass)
+      - name: 4. Inject Vantage Design Language
+        run: |
+          # This pulls your UI, fonts, and scripts directly into the OS firmware
+          mkdir -p base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
+          cp -r config base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
+          cp -r assets base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
+          cp theme.json base-os/board/anbernic/rgdsplus/rootfs_overlay/etc/vantage/
+          
+          # Set the boot logo
+          cp assets/images/boot_logo.png base-os/board/anbernic/rgdsplus/rootfs_overlay/usr/share/bootlogo.png
+
+      - name: 5. Compile Final OS Image
         run: |
           cd base-os
-          mkdir -p output/images
-          
-          # For Phase 1, we generate a blank 50MB test image to verify the pipeline works.
-          # In Phase 2, this will be replaced with: make rgdsplus_defconfig && make
-          echo "Simulating kernel build for pipeline verification..."
-          dd if=/dev/zero of=output/images/vantageos-mini-alpha.img bs=1M count=50
-          echo "Build complete."
+          make rgdsplus_defconfig
+          # Using all available GitHub server cores to compile the Linux kernel
+          make -j$(nproc)
 
-      - name: 5. Upload the Flashable .img File
+      - name: 6. Upload the Flashable .img File
         uses: actions/upload-artifact@v4
         with:
-          name: vantageos-mini-alpha
-          path: base-os/output/images/vantageos-mini-alpha.img
+          name: vantageos-mini-release
+          path: base-os/output/images/sdcard.img
