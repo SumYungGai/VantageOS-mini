@@ -1,1 +1,43 @@
+name: Build VantageOS mini (Phase 1)
 
+# This tells GitHub to run the script when you click a button, or when you upload new code.
+on:
+  workflow_dispatch: 
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout VantageOS mini repo
+        uses: actions/checkout@v4
+
+      - name: 2. Install Linux Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git wget cpio unzip rsync bc
+
+      - name: 3. Clone BananaLinux Base
+        run: |
+          # Grabbing the core OS code we are building on top of
+          git clone --depth=1 https://github.com/JorreFog/BananaLinux.git base-os
+          
+      - name: 4. Compile OS Image (Phase 1 Fast-Pass)
+        run: |
+          cd base-os
+          mkdir -p output/images
+          
+          # For Phase 1, we generate a blank 50MB test image to verify the pipeline works.
+          # In Phase 2, this will be replaced with: make rgdsplus_defconfig && make
+          echo "Simulating kernel build for pipeline verification..."
+          dd if=/dev/zero of=output/images/vantageos-mini-alpha.img bs=1M count=50
+          echo "Build complete."
+
+      - name: 5. Upload the Flashable .img File
+        uses: actions/upload-artifact@v4
+        with:
+          name: vantageos-mini-alpha
+          path: base-os/output/images/vantageos-mini-alpha.img
