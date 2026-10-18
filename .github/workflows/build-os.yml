@@ -39,17 +39,18 @@ jobs:
         run: |
           cd base-os
           
-          TARGET_CONFIG=$(find . -name "*rgds*defconfig" -o -name "*anbernic*defconfig" | head -n 1 | awk -F'/' '{print $NF}')
+          # Find the exact path to the config file we discovered
+          CONFIG_PATH=$(find . -name "*banana_rgds_defconfig*" | head -n 1)
           
-          if [ -n "$TARGET_CONFIG" ]; then
-            echo "Auto-detected hardware config: $TARGET_CONFIG"
-            make $TARGET_CONFIG
-          else
-            echo "Using default fallback configuration."
-            make defconfig
-          fi
+          echo "Applying config from: $CONFIG_PATH"
           
-          # Compile the operating system (without the fail-safe)
+          # Manually force this configuration to be the active build state
+          cp $CONFIG_PATH .config
+          
+          # Prepare the configuration for compilation
+          make olddefconfig
+          
+          # Compile the operating system
           make -j$(nproc)
 
       - name: 6. Upload the Flashable .img File
