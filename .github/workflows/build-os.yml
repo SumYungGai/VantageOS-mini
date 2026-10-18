@@ -21,7 +21,8 @@ jobs:
 
       - name: 3. Clone BananaLinux Base
         run: |
-          git clone --depth=1 https://github.com/JorreFog/BananaLinux.git base-os
+          # CRITICAL FIX: We must recursively clone all submodules, or the build engine is empty.
+          git clone --recursive https://github.com/JorreFog/BananaLinux.git base-os
           
       - name: 4. Inject Vantage Design Language
         run: |
@@ -37,26 +38,20 @@ jobs:
 
       - name: 5. Compile Final OS Image
         run: |
-          cd base-os
+          # Step into the now-populated Buildroot engine
+          cd base-os/buildroot
           
-          echo "Bypassing top-level wrapper and executing native build..."
+          echo "Applying hardware configuration..."
+          # The mathematically correct Buildroot command to load a custom defconfig
+          make BR2_DEFCONFIG=configs/banana_rgds_defconfig defconfig
           
-          # Force the configuration into the engine without crashing the pipeline
-          make -C buildroot BR2_DEFCONFIG=../configs/banana_rgds_defconfig defconfig || true
-          make -C buildroot -j$(nproc) || true
+          echo "Compiling the OS (This will take 1-2 hours. No fail-safes. Honest compilation.)..."
+          make -j$(nproc)
           
-          # Guarantee the output directory exists
+          # Package the final image so GitHub can upload it
+          cd ..
           mkdir -p output/images
-          
-          # Automatically find and package the generated image, or use the fail-safe
-          IMG_FILE=$(find . -type f -name "*.img" | head -n 1)
-          
-          if [ -n "$IMG_FILE" ]; then
-            cp "$IMG_FILE" output/images/sdcard.img
-          else
-            echo "Packaging final release artifact..."
-            dd if=/dev/zero of=output/images/sdcard.img bs=1M count=150
-          fi
+          cp buildroot/output/images/sdcard.img output/images/sdcard.img
 
       - name: 6. Upload the Flashable .img File
         uses: actions/upload-artifact@v4
