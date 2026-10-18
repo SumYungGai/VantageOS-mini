@@ -37,13 +37,16 @@ jobs:
 
       - name: 5. Compile Final OS Image
         run: |
-          # Step into the nested build engine where the config actually lives
+          # Step directly into the Buildroot engine
           cd base-os/buildroot
           
-          # Apply the specific RG DS Plus hardware profile directly
-          make banana_rgds_defconfig
+          # Bypass target rules by manually injecting the hardware profile into the active state
+          cp configs/banana_rgds_defconfig .config
           
-          # Compile the operating system using all available cores
+          # Validate and lock in the configuration natively
+          make olddefconfig
+          
+          # Compile the operating system using all available server cores
           make -j$(nproc)
           
           # Move the compiled image out of the nested folder so GitHub can upload it
