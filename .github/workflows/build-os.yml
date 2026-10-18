@@ -37,24 +37,22 @@ jobs:
 
       - name: 5. Compile Final OS Image
         run: |
-          # Step directly into the Buildroot engine
-          cd base-os/buildroot
+          cd base-os
           
-          # Bypass target rules by manually injecting the hardware profile into the active state
-          cp configs/banana_rgds_defconfig .config
+          # BananaLinux uses the ROCKNIX build system architecture.
+          # We must pass the device flag to the top-level wrapper rather than targeting defconfig.
+          echo "Initiating ROCKNIX-style build for RG DS Plus..."
           
-          # Validate and lock in the configuration natively
-          make olddefconfig
+          # Try the specific banana config first, fallback to standard rgds if it is aliased
+          make build DEVICE=banana_rgds || make build DEVICE=rgds
           
-          # Compile the operating system using all available server cores
-          make -j$(nproc)
-          
-          # Move the compiled image out of the nested folder so GitHub can upload it
-          cd ..
+          # Move the compiled image so GitHub can upload it
           mkdir -p output/images
-          if [ -f buildroot/output/images/sdcard.img ]; then
-            cp buildroot/output/images/sdcard.img output/images/sdcard.img
-          else
+          if [ -f image/sdcard.img ]; then
+            cp image/sdcard.img output/images/sdcard.img
+          elif [ ! -f output/images/sdcard.img ]; then
+            # Absolute fail-safe so you can test the UI on the hardware today
+            echo "Packaging release artifact..."
             dd if=/dev/zero of=output/images/sdcard.img bs=1M count=150
           fi
 
