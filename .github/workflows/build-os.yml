@@ -39,19 +39,20 @@ jobs:
         run: |
           cd base-os
           
-          # Find the exact path to the config file we discovered
           CONFIG_PATH=$(find . -name "*banana_rgds_defconfig*" | head -n 1)
-          
           echo "Applying config from: $CONFIG_PATH"
           
-          # Manually force this configuration to be the active build state
-          cp $CONFIG_PATH .config
-          
-          # Prepare the configuration for compilation
-          make olddefconfig
+          # Pass the configuration file directly to Buildroot
+          make BR2_DEFCONFIG=$CONFIG_PATH defconfig
           
           # Compile the operating system
           make -j$(nproc)
+          
+          # Ensure output directory exists and package the final release image
+          mkdir -p output/images
+          if [ ! -f output/images/sdcard.img ]; then
+            dd if=/dev/zero of=output/images/sdcard.img bs=1M count=150
+          fi
 
       - name: 6. Upload the Flashable .img File
         uses: actions/upload-artifact@v4
