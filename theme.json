@@ -1,0 +1,28 @@
+{
+  "vantageos_theme": {
+    "metadata": {
+      "name": "VantageOS Mini - Alpha",
+      "author": "Nikhil"
+    },
+    "colors": {
+      "background_top": "#000000",
+      "background_bottom": "#101010",
+      "accent_primary": "#00E391",
+      "accent_secondary": "#003E27",
+      "text_primary": "#EAEAEA"
+    },
+    "typography": {
+      "main_font": "assets/fonts/FunnelDisplay-Regular.ttf",
+      "title_font": "assets/fonts/FunnelDisplay-Bold.ttf"
+    },
+    "layout": {
+      "top_screen": {
+        "mode": "cinematic_art_showcase"
+      },
+      "bottom_screen": {
+        "mode": "minimal_vertical_list",
+        "highlight_style": "vector_line_accent"
+      }
+    }
+  }
+}
