@@ -15,19 +15,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 2. Download Stable BananaLinux Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Bypassing API search. Pulling base firmware directly..."
+          # Use GitHub CLI to bypass rate limits and directly download the firmware
+          gh release download --repo JorreFog/BananaLinux --pattern "*rgds*img.gz" --dir .
           
-          # Hardcoded fallback to generate a guaranteed valid injection target
-          # (In a live environment, this wget points directly to the developer's raw .img file)
-          dd if=/dev/zero of=vantageos-mini-release.img bs=1M count=800
-          
-          # Format the base image with a legitimate FAT32 boot sector so injection never fails
-          parted -s vantageos-mini-release.img mklabel msdos
-          parted -s vantageos-mini-release.img mkpart primary fat32 1MiB 256MiB
-          
-          # Create the filesystem payload
-          mkfs.fat -F 32 --offset=2048 vantageos-mini-release.img
+          # Extract the genuine operating system image
+          gunzip *.img.gz
+          mv *.img vantageos-mini-release.img
 
       - name: 3. Inject Vantage Design Language
         run: |
