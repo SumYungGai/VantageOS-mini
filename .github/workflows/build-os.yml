@@ -14,25 +14,21 @@ jobs:
       - name: 1. Checkout VantageOS mini repo
         uses: actions/checkout@v4
 
-      - name: 2. Download Official Base Firmware
+      - name: 2. Download ROCKNIX Nightly Firmware
         run: |
-          echo "Pulling the official ROCKNIX base from the distribution repository..."
+          echo "Bypassing stable releases. Pulling the bleeding-edge ROCKNIX nightly..."
           
-          # Fetch the direct download link from the correct ROCKNIX/distribution endpoint
-          ASSET_URL=$(curl -s https://api.github.com/repos/ROCKNIX/distribution/releases/latest | grep "browser_download_url" | grep ".img.gz" | head -n 1 | cut -d '"' -f 4)
+          # Hitting the main releases endpoint without /latest grabs the newest pre-release
+          ASSET_URL=$(curl -s https://api.github.com/repos/ROCKNIX/distribution/releases | grep "browser_download_url" | grep ".img.gz" | head -n 1 | cut -d '"' -f 4)
           
           if [ -z "$ASSET_URL" ]; then
-             echo "Critical Error: Could not fetch ROCKNIX URL."
+             echo "Critical Error: Could not fetch ROCKNIX Nightly URL."
              exit 1
           fi
           
-          echo "Downloading actual firmware from: $ASSET_URL"
+          echo "Downloading Nightly firmware from: $ASSET_URL"
           wget -qO base.img.gz "$ASSET_URL"
-          
-          echo "Extracting the payload..."
           gunzip base.img.gz
-          
-          # Rename the file for Step 3 injection
           mv base.img vantageos-mini-release.img
 
       - name: 3. Inject Vantage Design Language
